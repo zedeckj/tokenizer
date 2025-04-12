@@ -1,7 +1,7 @@
 ### tokenize.h
 
 Provides an interface for generating tokens from a string, allowing for the specification
-of operators and the inclusion of source information, allowing for better error generation when parsing
+of operators and the inclusion of source information. The benefit of this is the ability to create high quality error messages when parsing.
 
 ``` C
 void test1() {

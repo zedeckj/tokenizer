@@ -70,8 +70,12 @@ token_t *ftoken(FILE *file, tok_context_t *context);
 void free_token(token_t *token);
 
 
+// Returns true if the given token is not null and has an equivalent string
+bool token_is(token_t *token, char *str);
+
 // Ungets a token. Subsequent calls to stoken or ftoken with the same context
-// will return the same token.
+// will return the same token. This does not undo using ftoken on the same stream.
+// with a different context
 void untoken(token_t *tok, tok_context_t *context);
 
 

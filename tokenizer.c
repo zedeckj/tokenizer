@@ -27,6 +27,38 @@ tok_context_t *start_context(char *source_name, char *operators, char * delims, 
 	context->escape = escape;
 	return context;
 }
+void free_token_list(token_list_t *list){
+	if (list) {
+		free_token(list->first);
+		free_token_list(list->rest);
+		free(list);
+	}
+}
+
+void end_context(tok_context_t *context){
+	free_token_list(context->ungot);
+	free(context);
+}
+
+
+
+token_t *pop_token(tok_context_t *context) {
+	if (context && context->ungot) {
+		token_t *tok = context->ungot->first;
+		token_list_t *rest = context->ungot->rest;
+		free(context->ungot);
+		context->ungot = rest; 
+		return tok;
+	}
+	return 0;
+}
+
+void untoken(token_t *tok, tok_context_t *context) {
+	token_list_t *u = malloc(sizeof(token_list_t));
+	u->first = tok;
+	u->rest = context->ungot;
+	context->ungot = u;
+}
 
 int write_loc(source_loc_t* loc, char *buffer){
 	if (!loc || !buffer) return 0;
@@ -195,7 +227,7 @@ token_t *process_char(char c, tok_context_t *context, char
 
 
 bool check_ptr(void *ptr, tok_context_t *context) {
-	if (!ptr) return false;
+	if (!ptr || !context) return false;
 	if (context->pntr != ptr) {
 		context->pntr = ptr;
 		context->index = 0;
@@ -205,6 +237,8 @@ bool check_ptr(void *ptr, tok_context_t *context) {
 
 
 token_t *stoken(char *str, tok_context_t *context) {
+	token_t *pop = pop_token(context);
+	if (pop) return pop;
 	if (!check_ptr(str, context) || !strlen(str)) return 0;
 	char buffer[TOK_MAX_LEN];
 	size_t tok_i = 0;
@@ -222,8 +256,9 @@ token_t *stoken(char *str, tok_context_t *context) {
 	return new_token(buffer, tok_i, beginning);
 }
 
-
 token_t *ftoken(FILE *file, tok_context_t *context) {
+	token_t *pop = pop_token(context);
+	if (pop) return pop;
 	if (!check_ptr(file, context)) return 0;
 	char buffer[TOK_MAX_LEN];
 	size_t tok_i = 0;
@@ -249,3 +284,4 @@ token_t *ftoken(FILE *file, tok_context_t *context) {
 	} while (true);
 	return 0;	
 }
+

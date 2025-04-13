@@ -20,9 +20,10 @@ typedef struct {
 
 
 typedef struct tokens {
-	token_t first;
+	token_t *first;
 	struct tokens *rest;
 } token_list_t; 
+
 
 typedef struct {
 	source_loc_t loc;
@@ -31,6 +32,7 @@ typedef struct {
 	char escape;
 	char *operators;
 	char *delims;
+	token_list_t *ungot;
 } tok_context_t;
 
 
@@ -54,6 +56,10 @@ tok_context_t *start_delim_ctx(char *source_name, char *delims, char escape);
 // for any argument after source_name that should be ignored
 tok_context_t *start_context(char *source_name, char * operators, char *delims, char escape);
 
+// Frees the given context and its contents
+void end_context(tok_context_t *ctx);
+
+
 // Mallocs a new token from the given string
 token_t *stoken(char *str, tok_context_t *context);
 
@@ -64,7 +70,9 @@ token_t *ftoken(FILE *file, tok_context_t *context);
 void free_token(token_t *token);
 
 
-// Returns true if the given token is not null and has an equivalent string as the one provided
-bool token_is(token_t *tok, char *string);
+// Ungets a token. Subsequent calls to stoken or ftoken with the same context
+// will return the same token.
+void untoken(token_t *tok, tok_context_t *context);
+
 
 #endif

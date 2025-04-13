@@ -55,7 +55,7 @@ void test_basic() {
 	test_str(stoken(str, ctx), "+");		
 	test_str(stoken(str, ctx), "x");
 	test_null(stoken(str, ctx));	
-	free(ctx);	
+	end_context(ctx);	
 }
 
 void test1() {
@@ -71,7 +71,7 @@ void test1() {
 	test_full(stoken(str, ctx), "2", "test1:1:12");
 	test_full(stoken(str, ctx), ")", "test1:1:13");
 	test_null(stoken(str, ctx));
-	free(ctx);
+	end_context(ctx);
 }
 
 void test2() {
@@ -86,7 +86,7 @@ void test2() {
 	test_full(stoken(part2, ctx), "3", "test2:1:7");
 	test_full(stoken(part2, ctx), "]", "test2:1:8");
 	test_null(stoken(part2, ctx));
-	free(ctx);
+	end_context(ctx);
 }
 
 void test3() {
@@ -96,7 +96,7 @@ void test3() {
 	test_full(stoken(text, ctx), "+", "test3:1:7");
 	test_full(stoken(text, ctx), "1", "test3:2:1");
 	test_null(stoken(text, ctx));
-	free(ctx);
+	end_context(ctx);
 }
 
 void test4() {
@@ -107,14 +107,14 @@ void test4() {
 	test_full(stoken(text, ctx), "\"three \" four\"", "test4:1:9");
 	test_full(stoken(text, ctx), "more", "test4:1:25");
 	test_null(stoken(text, ctx));
-	free(ctx);
+	end_context(ctx);
 }
 
 void test5() {
 	char *text = "^single\ntoken^";
 	tok_context_t *ctx = start_delim_ctx("test5", "^", 0);
 	test_full(stoken(text, ctx), "^single\ntoken^", "test5:1:1");
-	free(ctx);	
+	end_context(ctx);	
 }
 
 
@@ -122,7 +122,7 @@ void test6() {
 	char *text = "^single\\^\ntoken^";
 	tok_context_t *ctx = start_delim_ctx("test6", "^", '\\');
 	test_full(stoken(text, ctx), "^single^\ntoken^", "test6:1:1");
-	free(ctx);	
+	end_context(ctx);	
 }
 
 void test7() {
@@ -132,7 +132,7 @@ void test7() {
 	test_str(stoken(text, ctx), ".2 ^3^ 4.");	
 	test_str(stoken(text, ctx), "^5 6^");	
 	test_str(stoken(text, ctx), "7");	
-	free(ctx);
+	end_context(ctx);
 }
 
 void test8() {
@@ -147,6 +147,18 @@ void test8() {
 	test_full(ftoken(file, ctx), "-o", "Makefile:3:12");
 	test_full(ftoken(file, ctx), "test", "Makefile:3:15");
 	test_null(ftoken(file, ctx));
+	end_context(ctx);
+}
+
+void test9() {
+	char *str = "foo bar baz";
+	tok_context_t *ctx = start_def_ctx("test9");
+	test_null(stoken(str, 0));
+	token_t *tok = stoken(str, ctx);
+	untoken(tok, ctx);
+	test_full(stoken(str,ctx), "foo", "test9:1:1");
+	test_full(stoken(str,ctx), "bar", "test9:1:5");
+	end_context(ctx);
 }
 
 int main() {
@@ -159,5 +171,6 @@ int main() {
 	test6();
 	test7();
 	test8();
+	test9();
 	printf("All %d tests passed\n", tests);
 }

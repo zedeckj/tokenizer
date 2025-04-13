@@ -22,7 +22,7 @@ void test_full(token_t *tok, char * str, char *location) {
 		exit(1);
 	}
 	char buffer[100];
-	if (!format_loc(tok, buffer)) {
+	if (!write_loc(tok->location, buffer)) {
 		fprintf(stderr, "Could not format location of token\n");
 		exit(1);
 	}

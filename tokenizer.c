@@ -1,6 +1,10 @@
 #include "tokenizer.h"
 
 
+bool token_is(token_t *tok, char *string) {
+	return tok && string && !strcmp(tok->string, string);
+}
+
 tok_context_t *start_def_ctx(char *source_name) {
 	return start_context(source_name, 0, 0, 0);
 }
@@ -24,10 +28,8 @@ tok_context_t *start_context(char *source_name, char *operators, char * delims, 
 	return context;
 }
 
-int format_loc(token_t * token, char *buffer){
-	if (!token || !buffer) return 0;
-	source_loc_t *loc = token->location;
-	if (!loc) return 0;
+int write_loc(source_loc_t* loc, char *buffer){
+	if (!loc || !buffer) return 0;
 	return sprintf(buffer, "%s:%ld:%ld", loc->source_name, loc->line, loc->col);
 }
 

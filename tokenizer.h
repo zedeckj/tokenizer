@@ -34,9 +34,9 @@ typedef struct {
 } tok_context_t;
 
 
-// Formats the source location of the given token into the form
+// Formats a source location into the form
 // <source-name>:<line>:<col>, ex. "stdin:2:5"
-int format_loc(token_t * token, char *buffer);
+int write_loc(source_loc_t *location, char *buffer);
 
 // Mallocs a tokenizing context with no special conditions
 tok_context_t *start_def_ctx(char *source_name);
@@ -62,5 +62,9 @@ token_t *ftoken(FILE *file, tok_context_t *context);
 
 // Frees the given token
 void free_token(token_t *token);
+
+
+// Returns true if the given token is not null and has an equivalent string as the one provided
+bool token_is(token_t *tok, char *string);
 
 #endif

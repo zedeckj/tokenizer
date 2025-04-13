@@ -17,6 +17,6 @@ void test1() {
 	test_full(stoken(str, ctx), "2", "test1:1:12");
 	test_full(stoken(str, ctx), ")", "test1:1:13");
 	test_null(stoken(str, ctx));
-	free(ctx);
+	end_context(ctx);
 }
 ```

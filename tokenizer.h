@@ -9,7 +9,7 @@
 typedef struct {
 	char *source_name;
 	size_t line;
-	size_t row;
+	size_t col;
 } source_loc_t;
 
 
@@ -27,7 +27,7 @@ typedef struct tokens {
 typedef struct {
 	source_loc_t loc;
 	size_t index;
-	char *cur_str;
+	void *pntr;
 	char escape;
 	char *operators;
 	char *delims;
@@ -35,7 +35,7 @@ typedef struct {
 
 
 // Formats the source location of the given token into the form
-// <source-name>:<line>:<row>, ex. "stdin:2:5"
+// <source-name>:<line>:<col>, ex. "stdin:2:5"
 int format_loc(token_t * token, char *buffer);
 
 // Mallocs a tokenizing context with no special conditions
@@ -56,6 +56,9 @@ tok_context_t *start_context(char *source_name, char * operators, char *delims, 
 
 // Mallocs a new token from the given string
 token_t *stoken(char *str, tok_context_t *context);
+
+// Mallocs a new token from the given file
+token_t *ftoken(FILE *file, tok_context_t *context);
 
 // Frees the given token
 void free_token(token_t *token);

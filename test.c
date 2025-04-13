@@ -135,6 +135,20 @@ void test7() {
 	free(ctx);
 }
 
+void test8() {
+	FILE *file = fopen("Makefile", "r");
+	tok_context_t *ctx = start_delim_ctx("Makefile", "\"", 0);
+	test_full(ftoken(file, ctx), "all:", "Makefile:1:1");
+	test_full(ftoken(file, ctx), "#", "Makefile:2:2");
+	test_full(ftoken(file, ctx), "\"Compile for testing\"", "Makefile:2:4");
+	test_full(ftoken(file, ctx), "cc", "Makefile:3:2");
+	test_full(ftoken(file, ctx), "-W", "Makefile:3:5");
+	test_full(ftoken(file, ctx), "*.c", "Makefile:3:8");
+	test_full(ftoken(file, ctx), "-o", "Makefile:3:12");
+	test_full(ftoken(file, ctx), "test", "Makefile:3:15");
+	test_null(ftoken(file, ctx));
+}
+
 int main() {
 	test_basic();
 	test1();
@@ -144,5 +158,6 @@ int main() {
 	test5();
 	test6();
 	test7();
+	test8();
 	printf("All %d tests passed\n", tests);
 }

@@ -15,11 +15,11 @@ tok_context_t *start_delim_ctx(char *source_name, char *delims, char escape) {
 
 tok_context_t *start_context(char *source_name, char *operators, char * delims, char escape) {
 	tok_context_t *context = malloc(sizeof(tok_context_t));
-	context->loc = (source_loc_t){.source_name = source_name, .line = 1, .row = 1}; 
+	context->loc = (source_loc_t){.source_name = source_name, .line = 1, .col = 1}; 
 	context->operators = operators;
 	context->delims = delims;
 	context->index = 0;
-	context->cur_str = 0;
+	context->pntr = 0;
 	context->escape = escape;
 	return context;
 }
@@ -28,7 +28,7 @@ int format_loc(token_t * token, char *buffer){
 	if (!token || !buffer) return 0;
 	source_loc_t *loc = token->location;
 	if (!loc) return 0;
-	return sprintf(buffer, "%s:%ld:%ld", loc->source_name, loc->line, loc->row);
+	return sprintf(buffer, "%s:%ld:%ld", loc->source_name, loc->line, loc->col);
 }
 
 token_t *new_token(char *buffer, size_t len, source_loc_t *current_loc) {
@@ -58,7 +58,7 @@ bool use_whitespace(char c, tok_context_t *context) {
 		switch (c) {
 			case ' ': 
 			case '\t':
-			context->loc.row++;
+			context->loc.col++;
 			context->index++;
 			return true;
 			
@@ -71,12 +71,22 @@ bool use_whitespace(char c, tok_context_t *context) {
 			case '\n':
 			context->loc.line++;
 			case '\r':
-			context->loc.row = 1;
+			context->loc.col = 1;
 			context->index++;
 			return true;
 		}
 		return false;
 }
+
+void fskip_whitespace(FILE *f, tok_context_t *context) {
+	char c;
+	do {
+		c = getc(f);
+		if (!use_whitespace(c, context)) break;
+	} while(true);
+	ungetc(c, f);
+}
+
 
 
 void skip_whitespace(char *str, tok_context_t *context) {
@@ -91,73 +101,149 @@ source_loc_t *copy_loc(tok_context_t *context) {
 	return beginning;	
 }
 
+token_t *process_delim_char(char c, tok_context_t *context, char *out_buffer,
+	size_t *tok_i, bool *escaped, source_loc_t *beginning, char delim) {
+	if (!(*escaped) && c == '\\') {
+				*escaped = true;
+				context->index++;
+				context->loc.col++;
+	}
+	else {	
+			out_buffer[(*tok_i)++] = c;
+			if (!use_whitespace(c, context)) {
+				context->index++;
+				context->loc.col++;
+				if (!(*escaped) && c == delim) {
+					return new_token(out_buffer, *tok_i, beginning);
+				}
+			}
+			*escaped = false;
+	}	
+	return 0;
+}	
 
-token_t *delim_tok(char *str, tok_context_t *context) {
+
+token_t *delim_stok(char *str, tok_context_t *context) {
 	char delim = str[context->index++];
 	char buffer[TOK_MAX_LEN];
 	buffer[0] = delim;
 	bool escaped = false;
 	source_loc_t *beginning = copy_loc(context);
-	context->loc.row++;
+	context->loc.col++;
 	size_t tok_i = 1;
 	for (size_t i = context->index; str[i]; i++) {
-		if (!escaped && str[i] == '\\') {
-				escaped = true;
-				context->index++;
-				context->loc.row++;
-		}
-		else {	
-			buffer[tok_i++] = str[i];
-			if (!use_whitespace(str[i], context)) {
-				context->index++;
-				context->loc.row++;
-				if (!escaped && str[i] == delim){
-					break;
-				
-				}
-			}
-			escaped = false;
-		}
+		token_t *tok;
+		if ((tok = process_delim_char(str[i], context, buffer, &tok_i, 
+						&escaped, beginning, delim)))
+				return tok;
 	}
 	return new_token(buffer, tok_i, beginning);
 }
 
 
-token_t *stoken(char *str, tok_context_t *context) {
-	if (!str || !strlen(str)) return 0;
-	if (context->cur_str != str) {
-		context->cur_str = str;
+
+token_t *delim_ftok(FILE *file, tok_context_t *context) {
+	char delim = getc(file);
+	char buffer[TOK_MAX_LEN];
+	buffer[0] = delim;
+	bool escaped = false;
+	source_loc_t *beginning = copy_loc(context);
+	context->loc.col++;
+	size_t tok_i = 1;
+	char c;
+	do {
+		c = getc(file);
+		if (c == '\0' || c == EOF) break;
+		token_t *tok;
+		if ((tok = process_delim_char(c, context, buffer, &tok_i, 
+						&escaped, beginning, delim)))
+				return tok;
+	} while(true);
+	return new_token(buffer, tok_i, beginning);
+}
+
+
+
+
+token_t *process_char(char c, tok_context_t *context, char 
+		*out_buffer, size_t *tok_i, source_loc_t *loc) {
+	if (is_oneof(c, context->operators)) {
+			if (*tok_i) goto new_tok;
+			else {
+				context->index++;
+				context->loc.col++;
+				out_buffer[0] = c;
+				*tok_i = 1;
+				goto new_tok;
+			}
+	}
+	else if (isspace(c)) goto new_tok;
+	else {
+			context->index++;
+			context->loc.col ++;			
+			out_buffer[(*tok_i)++] = c;
+			return 0;
+	}
+	new_tok: {
+		out_buffer[*tok_i] = 0;
+		token_t *out = new_token(out_buffer, *tok_i, loc);
+		return out;
+	}
+}
+
+
+bool check_ptr(void *ptr, tok_context_t *context) {
+	if (!ptr) return false;
+	if (context->pntr != ptr) {
+		context->pntr = ptr;
 		context->index = 0;
 	}
+	return true;
+}
+
+
+token_t *stoken(char *str, tok_context_t *context) {
+	if (!check_ptr(str, context) || !strlen(str)) return 0;
 	char buffer[TOK_MAX_LEN];
 	size_t tok_i = 0;
 	skip_whitespace(str, context);	
 	source_loc_t *beginning = copy_loc(context);
-	for (size_t i = context->index; str[i]; i++) {
-		if (is_oneof(str[i], context->delims)) {
-			if (tok_i) goto new_tok;
-			else return delim_tok(str, context);	
+	size_t i = context->index;
+	if (is_oneof(str[i], context->delims)) {
+		return delim_stok(str, context);	
+	}
+	for (; str[i]; i++) {
+		token_t *tok;
+		if ((tok = process_char(str[i], context, buffer, &tok_i, beginning)))
+		 	return tok;
+	}
+	return new_token(buffer, tok_i, beginning);
+}
+
+
+token_t *ftoken(FILE *file, tok_context_t *context) {
+	if (!check_ptr(file, context)) return 0;
+	char buffer[TOK_MAX_LEN];
+	size_t tok_i = 0;
+	fskip_whitespace(file, context);	
+	source_loc_t *beginning = copy_loc(context);
+	int c = getc(file);
+	ungetc(c, file);
+	if (is_oneof(c, context->delims)) {
+		return delim_ftok(file, context);
+	}
+	do {
+		int c = getc(file);
+		if (c == '\0' || c == EOF) {
+			ungetc(c, file);
+			if (tok_i) return new_token(buffer, tok_i, beginning);		
+			else return 0;	
 		}	
-		if (is_oneof(str[i], context->operators)) {
-			if (tok_i) goto new_tok;
-			else {
-				context->index++;
-				context->loc.row++;
-				buffer[0] = str[i];
-				tok_i = 1;
-				goto new_tok;
-			}
+		token_t *tok;
+		if ((tok = process_char(c, context, buffer, &tok_i, beginning))) {
+			ungetc(c, file);
+			return tok;
 		}
-		else if (isspace(str[i])) goto new_tok;
-		else {
-			context->index++;
-			context->loc.row ++;			
-			buffer[tok_i++] = str[i];
-		}
-		
-	}
-	new_tok: {
-		token_t *out = new_token(buffer, tok_i, beginning);
-		return out;
-	}
+	} while (true);
+	return 0;	
 }

@@ -200,9 +200,12 @@ token_t *delim_ftok(FILE *file, tok_context_t *context) {
 
 
 token_t *process_char(char c, tok_context_t *context, char 
-		*out_buffer, size_t *tok_i, source_loc_t *loc) {
+		*out_buffer, size_t *tok_i, source_loc_t *loc, bool *unget) {
 	if (is_oneof(c, context->operators)) {
-			if (*tok_i) goto new_tok;
+			if (*tok_i){
+				*unget = true;
+				goto new_tok;
+			}
 			else {
 				context->index++;
 				context->loc.col++;
@@ -211,7 +214,10 @@ token_t *process_char(char c, tok_context_t *context, char
 				goto new_tok;
 			}
 	}
-	else if (isspace(c)) goto new_tok;
+	else if (isspace(c)){
+		*unget = true;
+		goto new_tok;
+	}
 	else {
 			context->index++;
 			context->loc.col ++;			
@@ -250,7 +256,8 @@ token_t *stoken(char *str, tok_context_t *context) {
 	}
 	for (; str[i]; i++) {
 		token_t *tok;
-		if ((tok = process_char(str[i], context, buffer, &tok_i, beginning)))
+		bool u;
+		if ((tok = process_char(str[i], context, buffer, &tok_i, beginning, &u)))
 		 	return tok;
 	}
 	return new_token(buffer, tok_i, beginning);
@@ -277,8 +284,9 @@ token_t *ftoken(FILE *file, tok_context_t *context) {
 			else return 0;	
 		}	
 		token_t *tok;
-		if ((tok = process_char(c, context, buffer, &tok_i, beginning))) {
-			ungetc(c, file);
+		bool unget = false;
+		if ((tok = process_char(c, context, buffer, &tok_i, beginning, &unget))) {
+			if (unget) ungetc(c, file);
 			return tok;
 		}
 	} while (true);

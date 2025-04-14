@@ -27,6 +27,7 @@ void test_full(token_t *tok, char * str, char *location) {
 		exit(1);
 	}
 	if (strcmp(buffer, location)){
+		test_str(tok, str);
 		fprintf(stderr, "Token %s has location `%s` but expected `%s`\n", tok->string, buffer, location);
 		exit(1);
 	}
@@ -137,8 +138,9 @@ void test7() {
 
 void test8() {
 	FILE *file = fopen("Makefile", "r");
-	tok_context_t *ctx = start_delim_ctx("Makefile", "\"", 0);
-	test_full(ftoken(file, ctx), "all:", "Makefile:1:1");
+	tok_context_t *ctx = start_context("Makefile", ":", "\"", 0);
+	test_full(ftoken(file, ctx), "all", "Makefile:1:1");
+	test_full(ftoken(file, ctx), ":", "Makefile:1:4");
 	test_full(ftoken(file, ctx), "#", "Makefile:2:2");
 	test_full(ftoken(file, ctx), "\"Compile for testing\"", "Makefile:2:4");
 	test_full(ftoken(file, ctx), "cc", "Makefile:3:2");

@@ -136,7 +136,7 @@ source_loc_t *copy_loc(tok_context_t *context) {
 }
 
 token_t *process_delim_char(char c, tok_context_t *context, char *out_buffer,
-	size_t *tok_i, bool *escaped, source_loc_t *beginning, char delim) {
+	size_t *tok_i, bool *escaped, source_loc_t *beginning, char end_delim) {
 	if (!(*escaped) && c == '\\') {
 				*escaped = true;
 				context->index++;
@@ -147,7 +147,7 @@ token_t *process_delim_char(char c, tok_context_t *context, char *out_buffer,
 			if (!use_whitespace(c, context)) {
 				context->index++;
 				context->loc.col++;
-				if (!(*escaped) && c == delim) {
+				if (!(*escaped) && c == end_delim) {
 					return new_token(out_buffer, *tok_i, beginning);
 				}
 			}
@@ -157,7 +157,7 @@ token_t *process_delim_char(char c, tok_context_t *context, char *out_buffer,
 }	
 
 
-token_t *delim_stok(char *str, tok_context_t *context) {
+token_t *delim_stok(char *str, tok_context_t *context, char end_delim) {
 	char delim = str[context->index++];
 	char buffer[TOK_MAX_LEN];
 	buffer[0] = delim;
@@ -168,7 +168,7 @@ token_t *delim_stok(char *str, tok_context_t *context) {
 	for (size_t i = context->index; str[i]; i++) {
 		token_t *tok;
 		if ((tok = process_delim_char(str[i], context, buffer, &tok_i, 
-						&escaped, beginning, delim)))
+						&escaped, beginning, end_delim)))
 				return tok;
 	}
 	return new_token(buffer, tok_i, beginning);
@@ -176,7 +176,7 @@ token_t *delim_stok(char *str, tok_context_t *context) {
 
 
 
-token_t *delim_ftok(FILE *file, tok_context_t *context) {
+token_t *delim_ftok(FILE *file, tok_context_t *context, char end_delim) {
 	char delim = getc(file);
 	char buffer[TOK_MAX_LEN];
 	buffer[0] = delim;
@@ -190,7 +190,7 @@ token_t *delim_ftok(FILE *file, tok_context_t *context) {
 		if (c == '\0' || c == EOF) break;
 		token_t *tok;
 		if ((tok = process_delim_char(c, context, buffer, &tok_i, 
-						&escaped, beginning, delim)))
+						&escaped, beginning, end_delim)))
 				return tok;
 	} while(true);
 	return new_token(buffer, tok_i, beginning);
@@ -242,6 +242,16 @@ bool check_ptr(void *ptr, tok_context_t *context) {
 }
 
 
+char matching_delim(char c, char *delims) {
+	if (!delims) return 0;
+	for (int i = 0; delims[i]; i++) {
+		if (delims[i] == c && i % 2 == 0) {
+			return delims[i+1];
+		}
+	}
+	return 0;
+}
+
 token_t *stoken(char *str, tok_context_t *context) {
 	token_t *pop = pop_token(context);
 	if (pop) return pop;
@@ -251,8 +261,9 @@ token_t *stoken(char *str, tok_context_t *context) {
 	skip_whitespace(str, context);	
 	source_loc_t *beginning = copy_loc(context);
 	size_t i = context->index;
-	if (is_oneof(str[i], context->delims)) {
-		return delim_stok(str, context);	
+	char end_delim = matching_delim(str[i], context->delims);
+	if (end_delim) {
+		return delim_stok(str, context, end_delim);	
 	}
 	for (; str[i]; i++) {
 		token_t *tok;
@@ -273,8 +284,9 @@ token_t *ftoken(FILE *file, tok_context_t *context) {
 	source_loc_t *beginning = copy_loc(context);
 	int c = getc(file);
 	ungetc(c, file);
-	if (is_oneof(c, context->delims)) {
-		return delim_ftok(file, context);
+	char end_delim = matching_delim(c, context->delims);
+	if (end_delim) {
+		return delim_ftok(file, context, end_delim);
 	}
 	do {
 		int c = getc(file);

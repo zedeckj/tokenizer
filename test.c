@@ -102,7 +102,7 @@ void test3() {
 
 void test4() {
 	char *text = "one two \"three \\\" four\" more";
-	tok_context_t *ctx = start_delim_ctx("test4", "\"", '\\');
+	tok_context_t *ctx = start_delim_ctx("test4", "\"\"", '\\');
 	test_full(stoken(text, ctx), "one", "test4:1:1");
 	test_full(stoken(text, ctx), "two", "test4:1:5");
 	test_full(stoken(text, ctx), "\"three \" four\"", "test4:1:9");
@@ -113,7 +113,7 @@ void test4() {
 
 void test5() {
 	char *text = "^single\ntoken^";
-	tok_context_t *ctx = start_delim_ctx("test5", "^", 0);
+	tok_context_t *ctx = start_delim_ctx("test5", "^^", 0);
 	test_full(stoken(text, ctx), "^single\ntoken^", "test5:1:1");
 	end_context(ctx);	
 }
@@ -121,14 +121,14 @@ void test5() {
 
 void test6() {
 	char *text = "^single\\^\ntoken^";
-	tok_context_t *ctx = start_delim_ctx("test6", "^", '\\');
+	tok_context_t *ctx = start_delim_ctx("test6", "^^", '\\');
 	test_full(stoken(text, ctx), "^single^\ntoken^", "test6:1:1");
 	end_context(ctx);	
 }
 
 void test7() {
 	char *text = "1 .2 ^3^ 4. ^5 6^ 7";
-	tok_context_t *ctx = start_delim_ctx("test7", "^.", 0);
+	tok_context_t *ctx = start_delim_ctx("test7", "^^..", 0);
 	test_str(stoken(text, ctx), "1");	
 	test_str(stoken(text, ctx), ".2 ^3^ 4.");	
 	test_str(stoken(text, ctx), "^5 6^");	
@@ -138,7 +138,7 @@ void test7() {
 
 void test8() {
 	FILE *file = fopen("Makefile", "r");
-	tok_context_t *ctx = start_context("Makefile", ":", "\"", 0);
+	tok_context_t *ctx = start_context("Makefile", ":", "\"\"", 0);
 	test_full(ftoken(file, ctx), "all", "Makefile:1:1");
 	test_full(ftoken(file, ctx), ":", "Makefile:1:4");
 	test_full(ftoken(file, ctx), "#", "Makefile:2:2");

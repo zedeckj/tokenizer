@@ -25,6 +25,7 @@ tok_context_t *start_context(char *source_name, char *operators, char * delims, 
 	context->index = 0;
 	context->pntr = 0;
 	context->escape = escape;
+	context->ungot = 0;
 	return context;
 }
 void free_token_list(token_list_t *list){
